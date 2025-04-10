@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en" x-data="matraTuner()">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hindi Matra Tuner</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Baloo 2', cursive;
+      padding: 1rem;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .tuner-card {
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      color: #d35400;
+      margin-bottom: 1.5rem;
+    }
+
+    .consonant-selector {
+      margin-bottom: 1.5rem;
+    }
+
+    select {
+      font-family: inherit;
+      font-size: 1.2rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 2px solid #f39c12;
+    }
+
+    .consonant-display {
+      font-size: 5rem;
+      margin: 1rem 0;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .piano-keys {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 2rem 0;
+      flex-wrap: wrap;
+    }
+
+    .key {
+      background: linear-gradient(to bottom, #fff, #f1f1f1);
+      border: 2px solid #ddd;
+      width: 50px;
+      height: 180px;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 6px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .key:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+    }
+
+    .key.active {
+      background: linear-gradient(to bottom, #f1c40f, #e67e22);
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .key-label {
+      margin-bottom: 1rem;
+      font-weight: bold;
+    }
+
+    .key-name {
+      font-size: 0.8rem;
+      color: #7f8c8d;
+      margin-bottom: 0.5rem;
+    }
+
+    .output-container {
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px dashed #f39c12;
+    }
+
+    .output {
+      font-size: 4rem;
+      color: #2c3e50;
+      min-height: 80px;
+    }
+
+    .examples {
+      margin-top: 2rem;
+      text-align: left;
+      font-size: 1.1rem;
+      background: #fff9e6;
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid #f1c40f;
+    }
+
+    .examples h3 {
+      color: #d35400;
+      margin-top: 0;
+    }
+
+    .example-word {
+      display: inline-block;
+      margin: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #f1c40f20;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .tts-status {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .playing {
+      animation: pulse 1s infinite;
+    }
+
+    @media (max-width: 600px) {
+      .key {
+        width: 40px;
+        height: 150px;
+        font-size: 1.5rem;
+      }
+      .consonant-display, .output {
+        font-size: 3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="tuner-card">
+    <h1>Hindi Matra Tuner</h1>
+    
+    <div class="consonant-selector">
+      <select x-model="baseConsonant" @change="updateOutput()">
+        <template x-for="consonant in consonants">
+          <option x-text="consonant"></option>
+        </template>
+      </select>
+    </div>
+    
+    <div class="consonant-display">
+      <span x-text="output" class="animated-output"></span>
+    </div>
+
+    <div class="piano-keys">
+      <template x-for="(matra, key, index) in matras" :key="key">
+        <div
+          class="key"
+          :class="{ 'active': matraKeys[sliderValue] === key, 'playing': currentlyPlaying === key }"
+          @click="playMatra(key)"
+          @mouseenter="if(isHoverPreview) previewMatra(key)"
+        >
+          <div class="key-name" x-text="matra.name"></div>
+          <div class="key-label" x-text="matra.label"></div>
+        </div>
+      </template>
+    </div>
+
+    <div class="output-container">
+      <div class="output" x-text="output"></div>
+      <div class="tts-status" x-text="ttsStatus" x-show="ttsStatus"></div>
+    </div>
+
+    <div class="examples">
+      <h3>Examples</h3>
+      <div>
+        <template x-for="example in examples">
+          <div class="example-word" @click="playExample(example)">
+            <span x-text="example.consonant"></span> + 
+            <span x-text="example.matra"></span> = 
+            <strong x-text="example.result"></strong> 
+            (<span x-text="example.meaning"></span>)
+          </div>
+        </template>
+      </div>
+      <p>Click on the matra keys above to hear how they change the consonant sound!</p>
+    </div>
+    
+    <!-- Hidden audio element for TTS -->
+    <audio id="tts-audio"></audio>
+  </div>
+
+  <script>
+    function matraTuner() {
+      return {
+        baseConsonant: 'क',
+        output: 'क',
+        sliderValue: 0,
+        currentlyPlaying: null,
+        isHoverPreview: true,
+        ttsStatus: '',
+        consonants: [
+          'क', 'ख', 'ग', 'घ', 'ङ',
+          'च', 'छ', 'ज', 'झ', 'ञ',
+          'ट', 'ठ', 'ड', 'ढ', 'ण',
+          'त', 'थ', 'द', 'ध', 'न',
+          'प', 'फ', 'ब', 'भ', 'म',
+          'य', 'र', 'ल', 'व', 'श',
+          'ष', 'स', 'ह'
+        ],
+        matras: {
+          none: { label: '⦿', name: "No matra", suffix: '' },
+          aa:   { label: 'ा', name: "Aa", suffix: 'ा' },
+          i:    { label: 'ि', name: "I", suffix: 'ि', prepend: true },
+          ii:   { label: 'ी', name: "Ii", suffix: 'ी' },
+          u:    { label: 'ु', name: "U", suffix: 'ु' },
+          uu:   { label: 'ू', name: "Uu", suffix: 'ू' },
+          e:    { label: 'े', name: "E", suffix: 'े' },
+          ai:   { label: 'ै', name: "Ai", suffix: 'ै' },
+          o:    { label: 'ो', name: "O", suffix: 'ो' },
+          au:   { label: 'ौ', name: "Au", suffix: 'ौ' }
+        },
+        examples: [
+          { consonant: 'प', matra: 'ा', result: 'पा', meaning: 'father (pā)' },
+          { consonant: 'ल', matra: 'ि', result: 'लि', meaning: 'listen (li)' },
+          { consonant: 'म', matra: 'ा', result: 'मा', meaning: 'mother (mā)' },
+          { consonant: 'न', matra: 'ी', result: 'नी', meaning: 'take away (nī)' },
+          { consonant: 'ग', matra: 'ु', result: 'गु', meaning: 'virtue (gu)' }
+        ],
+        get matraKeys() {
+          return Object.keys(this.matras);
+        },
+        updateOutput() {
+          const key = this.matraKeys[this.sliderValue];
+          this.applyMatra(key);
+        },
+        playMatra(key) {
+          this.sliderValue = this.matraKeys.indexOf(key);
+          const matra = this.matras[key];
+          this.applyMatra(key);
+          this.playTTS(this.output, 'hi', key);
+        },
+        playExample(example) {
+          this.baseConsonant = example.consonant;
+          // Find which matra this example uses
+          const matraKey = Object.keys(this.matras).find(key => 
+            this.matras[key].suffix === example.matra
+          );
+          if (matraKey) {
+            this.sliderValue = this.matraKeys.indexOf(matraKey);
+            this.applyMatra(matraKey);
+            this.playTTS(example.result, 'hi', matraKey);
+          }
+        },
+        previewMatra(key) {
+          this.applyMatra(key);
+        },
+        applyMatra(key) {
+          const m = this.matras[key];
+          let output;
+          
+          if (m.prepend) {
+            output = m.suffix + this.baseConsonant;
+          } else {
+            output = this.baseConsonant + m.suffix;
+          }
+          
+          // Add animation class
+          const outputEl = document.querySelector('.animated-output');
+          outputEl.classList.add('animate');
+          setTimeout(() => outputEl.classList.remove('animate'), 300);
+          
+          this.output = output;
+        },
+        playTTS(text, lang, matraKey) {
+          const audioEl = document.getElementById('tts-audio');
+          this.currentlyPlaying = matraKey;
+          this.ttsStatus = 'Loading pronunciation...';
+          
+          audioEl.onerror = () => {
+            this.ttsStatus = 'Error loading pronunciation';
+            this.currentlyPlaying = null;
+          };
+          
+          audioEl.onplay = () => {
+            this.ttsStatus = 'Playing...';
+          };
+          
+          audioEl.onended = () => {
+            this.ttsStatus = '';
+            this.currentlyPlaying = null;
+          };
+
+          const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+          audioEl.src = url;
+          audioEl.play().catch(e => {
+            this.ttsStatus = 'Playback blocked - click to allow';
+            console.warn('Autoplay blocked:', e);
+            this.currentlyPlaying = null;
+          });
+        }
+      }
+    }
+  </script>
+</body>
+</html>
