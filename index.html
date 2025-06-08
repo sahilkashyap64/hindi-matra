@@ -4,266 +4,322 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hindi Matra Tuner & Deconstructor</title>
+
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-color: #d35400;
-      --secondary-color: #f39c12;
-      --light-bg: #f0f4f8;
-      --dark-text: #2c3e50;
-      --highlight-color: #3498db;
-    }
-    body {
-      font-family: 'Baloo 2', cursive;
-      padding: 1rem;
-      background: var(--light-bg);
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      min-height: 100vh;
-      color: #333;
-    }
-    .tuner-card {
-      background: white;
-      border-radius: 20px;
-      padding: 2rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      max-width: 900px;
-      width: 100%;
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    h1, h2, h3 { color: var(--primary-color); font-weight: 700; }
-    .section-divider { border: 0; height: 2px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--secondary-color), rgba(0, 0, 0, 0)); margin: 3rem 0; }
-    p { color: #555; line-height: 1.6; }
-
-    /* --- Tuner Styles --- */
-    .controls { display: flex; justify-content: center; align-items: center; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-    select { font-family: inherit; font-size: 1.2rem; padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid var(--secondary-color); background: white; }
-    .consonant-display { font-size: 6rem; margin: 1rem 0; height: 120px; display: flex; align-items: center; justify-content: center; }
-    .piano-keys { display: flex; justify-content: center; gap: 0.5rem; margin: 2rem 0; flex-wrap: wrap; }
-    .key { background: linear-gradient(to bottom, #fff, #f1f1f1); border: 2px solid #ccc; width: 55px; height: 180px; border-radius: 0 0 8px 8px; box-shadow: 0 5px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 0.5rem; font-size: 2rem; cursor: pointer; transition: all 0.15s ease; position: relative; }
-    .key:hover { transform: translateY(-5px); box-shadow: 0 8px 12px rgba(0,0,0,0.15); }
-    .key.active { background: linear-gradient(to bottom, #f1c40f, #e67e22); border-color: #c2950c; transform: translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.2) inset; }
-    .key-label { font-weight: bold; }
-    .key-name { font-size: 0.9rem; color: #7f8c8d; margin-bottom: 0.5rem; font-weight: 600; }
-    
-    /* --- Deconstructor Styles --- */
-    .deconstructor-input-area { display: flex; gap: 1rem; margin-top: 1rem; align-items: center; }
-    .word-input { flex-grow: 1; font-family: 'Baloo 2', cursive; font-size: 1.5rem; padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid #ddd; transition: border-color 0.3s; }
-    .word-input:focus { border-color: var(--secondary-color); outline: none; }
-    .analyze-button { font-family: inherit; font-size: 1.2rem; font-weight: 600; padding: 0.7rem 1.5rem; border-radius: 8px; border: none; background: var(--primary-color); color: white; cursor: pointer; transition: background-color 0.3s; }
-    .analyze-button:hover { background: #e67e22; }
-    
-    /* NEW: Playback Controls */
-    .playback-controls { display: flex; justify-content: center; align-items: center; gap: 1.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
-    .play-all-button { font-size: 1.2rem; font-weight: 600; padding: 0.7rem 1.5rem; border-radius: 8px; border: none; background-color: var(--highlight-color); color: white; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 0.5rem; }
-    .play-all-button:hover:not(:disabled) { background-color: #2980b9; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4); }
-    .play-all-button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
-    .speed-controls { display: flex; gap: 0.5rem; background: #ecf0f1; padding: 0.3rem; border-radius: 8px; }
-    .speed-controls label { padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
-    .speed-controls input { display: none; }
-    .speed-controls input:checked + label { background: white; color: var(--primary-color); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-
-    .analysis-result { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem; min-height: 80px; padding: 1rem; background: #fafafa; border-radius: 12px; }
-    .syllable { display: flex; align-items: baseline; background: #e9ecef; padding: 0.5rem 1.2rem; border-radius: 10px; font-size: 2.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .syllable:hover { transform: translateY(-4px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
-    .syllable.speaking {
-        background-color: var(--highlight-color);
-        color: white;
-        transform: scale(1.1) translateY(-2px);
-        box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
-    }
-    .syllable.speaking .base-char { color: white; }
-    .syllable.speaking .inherent-a { color: #f0f0f0; }
-    .syllable .base-char { color: var(--dark-text); }
-    .syllable .matra-char { font-weight: 700; }
-    .syllable .inherent-a { font-size: 1rem; color: #95a5a6; margin-left: 0.2rem; }
-
-    @media (max-width: 600px) {
-      .tuner-card { padding: 1.5rem; }
-      .deconstructor-input-area { flex-direction: column; gap: 0.5rem; }
-      .playback-controls { flex-direction: column; }
-    }
-  </style>
+  <!-- Google Transliteration API -->
+  <link
+    href="https://www.google.com/uds/modules/elements/transliteration/api.css"
+    rel="stylesheet"
+  />
+   <script type="text/javascript" src="gtransapi.js"></script>
 </head>
-<body>
-  <div class="tuner-card">
-    <h1>Hindi Matra Tuner</h1>
-    <p>Select a consonant and click the piano keys to learn the matra sounds.</p>
-    <!-- ... (Tuner UI remains the same) ... -->
-    <div class="controls">
-        <select x-model="baseConsonant" @change="updateOutput()"><template x-for="c in consonants" :key="c"><option x-text="c"></option></template></select>
-    </div>
-    <div class="consonant-display"><span x-text="output"></span></div>
-    <div class="piano-keys">
-        <template x-for="key in matraKeys" :key="key">
-            <div class="key" :class="{ 'active': activeMatra === key }" @click="playMatra(key)">
-                <div class="key-name" x-text="matras[key].name"></div><div class="key-label" x-text="matras[key].label"></div>
-            </div>
+<body class="bg-gray-100 font-sans text-gray-800 flex flex-col items-center p-4">
+
+  <!-- Matra Tuner Card -->
+  <div class="bg-white rounded-2xl shadow-lg max-w-3xl w-full p-6 mb-8">
+    <h1 class="text-3xl font-bold text-orange-600 mb-2">Hindi Matra Tuner</h1>
+    <p class="text-gray-600 mb-4">Select a consonant and click the piano keys to hear each matra.</p>
+
+    <div class="flex flex-wrap justify-center gap-4 mb-6">
+      <select
+        x-model="baseConsonant"
+        @change="updateOutput()"
+        class="border-2 border-yellow-500 rounded-lg px-4 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-yellow-300"
+      >
+        <template x-for="c in consonants" :key="c">
+          <option x-text="c"></option>
         </template>
+      </select>
     </div>
 
-    <hr class="section-divider">
-
-    <!-- Deconstructor Section -->
-    <div class="deconstructor">
-        <h2>Word Deconstructor</h2>
-        <p>Type a Hindi word, then listen to it sound-by-sound and all together.</p>
-        <div class="deconstructor-input-area">
-            <input type="text" class="word-input" x-model="deconstructorInput" placeholder="जैसे → किताब" @keydown.enter="deconstructWord()">
-            <button class="analyze-button" @click="deconstructWord()">Analyze</button>
-        </div>
-
-        <!-- NEW: Playback Controls -->
-        <div class="playback-controls" x-show="deconstructedWord.length > 0">
-            <button class="play-all-button" @click="playSequence()" :disabled="isSequencePlaying">
-                <span x-show="!isSequencePlaying">▶️ Play All</span>
-                <span x-show="isSequencePlaying">Playing...</span>
-            </button>
-            <div class="speed-controls">
-                <input type="radio" id="slow" value="0.7" x-model="playbackRate"> <label for="slow">Slow</label>
-                <input type="radio" id="normal" value="1.0" x-model="playbackRate"> <label for="normal">Normal</label>
-                <input type="radio" id="fast" value="1.3" x-model="playbackRate"> <label for="fast">Fast</label>
-            </div>
-        </div>
-
-        <div class="analysis-result">
-            <template x-if="deconstructedWord.length === 0">
-                <span style="color: #999;">Analysis will appear here...</span>
-            </template>
-            <template x-for="(syllable, index) in deconstructedWord" :key="index">
-                <div class="syllable" @click="playTTS(syllable.full, playbackRate)" :class="{ 'speaking': currentlySpeakingSyllableIndex === index }">
-                    <span class="base-char" x-text="syllable.base"></span>
-                    <template x-if="syllable.matra"><span class="matra-char" x-text="syllable.matra" :style="{ color: getColor(index) }"></span></template>
-                    <template x-if="!syllable.matra && !syllable.isVowel"><span class="inherent-a">(+अ)</span></template>
-                </div>
-            </template>
-        </div>
+    <div class="text-6xl h-32 flex items-center justify-center mb-6">
+      <span x-text="output"></span>
     </div>
 
+    <div class="flex flex-wrap justify-center gap-2">
+      <template x-for="key in matraKeys" :key="key">
+        <button
+          @click="playMatra(key)"
+          class="group relative w-12 h-40 bg-gradient-to-b from-white to-gray-100 border-2 border-gray-300 rounded-b-lg shadow hover:-translate-y-1 hover:shadow-lg transition transform"
+          :class="activeMatra===key ? 'from-yellow-300 to-orange-400 border-yellow-500' : ''"
+        >
+          <div class="text-xs text-gray-500 group-hover:text-gray-700 font-semibold mb-1">
+            <span x-text="matras[key].name"></span>
+          </div>
+          <div class="text-2xl font-bold">
+            <span x-text="matras[key].label"></span>
+          </div>
+        </button>
+      </template>
+    </div>
   </div>
 
+  <!-- Transliteration Section -->
+  <div class="max-w-3xl w-full mb-8">
+    <h2 class="text-2xl font-bold text-orange-600 mb-2">English → Hindi Transliteration</h2>
+    <p class="text-gray-600 mb-2">
+      Type in Latin letters below and press <b>space</b>, And press <kbd class="px-1 bg-gray-200 rounded">Ctrl</kbd>+
+      <kbd class="px-1 bg-gray-200 rounded">G</kbd> if you want to toggle between hindi and english. Your Hindi text will flow
+      directly into the analyzer.
+    </p>
+    <textarea
+      x-ref="translit"
+      id="transliterateTextarea"
+      class="w-full h-32 p-4 border-2 border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-yellow-300"
+      placeholder="Type here…"
+    ></textarea>
+
+    <!-- NEW: Show raw Latin vs. Hindi -->
+    <div class="mt-4 bg-white p-4 rounded-lg shadow-sm space-y-1">
+      <p><span class="font-semibold">Latin Input:</span> <span x-text="rawLatin"></span></p>
+      <p><span class="font-semibold">Hindi Transliteration:</span> <span x-text="transliteration"></span></p>
+    </div>
+  </div>
+
+  <hr class="border-t-2 border-yellow-400 w-full max-w-3xl mb-8">
+
+  <!-- Word Deconstructor -->
+  <div class="bg-white rounded-2xl shadow-lg max-w-3xl w-full p-6 mb-8">
+    <h2 class="text-2xl font-bold text-orange-600 mb-2">Word Deconstructor</h2>
+    <p class="text-gray-600 mb-4">
+      Text from the transliteration box (or type here) will be analyzed.
+    </p>
+
+    <div class="flex flex-wrap gap-4 mb-6">
+      <input
+        type="text"
+        id="word-input-field"
+        x-ref="wordInputField"
+        x-model="deconstructorInput"
+        @keydown.enter="deconstructWord()"
+        class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-xl focus:outline-none focus:ring-2 focus:ring-yellow-300"
+        placeholder="Type 'pranam' or प्रणाम"
+      />
+      <button
+        @click="deconstructWord()"
+        class="bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-orange-700 transition"
+      >
+        Analyze
+      </button>
+    </div>
+
+    <div
+      class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6"
+      x-show="deconstructedWord.length"
+    >
+      <button
+        @click="playSequence()"
+        :disabled="isSequencePlaying"
+        class="flex items-center gap-2 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 transition"
+      >
+        <span x-show="!isSequencePlaying">▶️ Play All</span>
+        <span x-show="isSequencePlaying">Playing…</span>
+      </button>
+      <div class="flex gap-2 bg-gray-100 p-2 rounded-lg">
+        <template x-for="rate in ['0.7','1.0','1.3']" :key="rate">
+          <label
+            class="flex items-center gap-1 cursor-pointer px-3 py-1 rounded-md hover:bg-white transition"
+            :class="playbackRate===rate ? 'bg-white text-orange-600 ring-2 ring-yellow-300' : ''"
+          >
+            <input
+              type="radio"
+              :value="rate"
+              x-model="playbackRate"
+              class="hidden"
+            />
+            <span x-text="rate==='0.7' ? 'Slow' : rate==='1.0' ? 'Normal' : 'Fast'"></span>
+          </label>
+        </template>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-4">
+      <template x-if="!deconstructedWord.length">
+        <span class="text-gray-400">Analysis will appear here…</span>
+      </template>
+      <template x-for="(syll, i) in deconstructedWord" :key="i">
+        <div
+          @click="playTTS(syll.full, playbackRate)"
+          class="flex items-baseline gap-1 p-3 bg-gray-200 rounded-xl text-2xl font-semibold cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
+          :class="currentlySpeakingSyllableIndex===i ? 'bg-blue-500 text-white scale-105' : ''"
+          :style="{ borderColor: getColor(i) }"
+        >
+          <span x-text="syll.base"></span>
+          <template x-if="syll.matra">
+            <span x-text="syll.matra"></span>
+          </template>
+          <template x-if="!syll.matra && !syll.isVowel">
+            <span class="text-gray-500 text-lg">(+अ)</span>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Initialize Transliteration & Sync -->
+  <script>
+    google.load("elements","1",{packages:"transliteration"});
+    function onTranslitLoad() {
+      const opts = {
+        sourceLanguage: google.elements.transliteration.LanguageCode.ENGLISH,
+        destinationLanguage: [google.elements.transliteration.LanguageCode.HINDI],
+        shortcutKey: "ctrl+g",
+        transliterationEnabled: true
+      };
+      const control = new google.elements.transliteration.TransliterationControl(opts);
+      control.makeTransliteratable(["transliterateTextarea"]);
+    }
+    google.setOnLoadCallback(onTranslitLoad);
+  </script>
+
+  <!-- Alpine.js Component -->
   <script>
     function matraTuner() {
-      const HINDI_CONSONANTS = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ','ट','ठ','ड','ढ','ण','त','थ','द','ध','न','प','फ','ब','भ','म','य','र','ल','व','श','ष','स','ह'];
-      const HINDI_MATRAS = { none: { label: 'अ', name: "a", suffix: '' }, aa: { label: 'ा', name: "ā", suffix: 'ा' }, i: { label: 'ि', name: "i", suffix: 'ि'}, ii: { label: 'ी', name: "ī", suffix: 'ी' }, u: { label: 'ु', name: "u", suffix: 'ु' }, uu: { label: 'ू', name: "ū", suffix: 'ू' }, r: { label: 'ृ', name: "ṛ", suffix: 'ृ' }, e: { label: 'े', name: "e", suffix: 'े' }, ai: { label: 'ै', name: "ai", suffix: 'ै' }, o: { label: 'ो', name: "o", suffix: 'ो' }, au: { label: 'ौ', name: "au", suffix: 'ौ' }, an: { label: 'ं', name: "aṃ", suffix: 'ं' }, ah: { label: 'ः', name: "aḥ", suffix: 'ः' },};
-      const MATRA_CHARS = new Set(Object.values(HINDI_MATRAS).map(m => m.suffix).filter(Boolean));
-      const VOWEL_CHARS = new Set(['अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ऋ', 'ए', 'ऐ', 'ओ', 'औ']);
+      const H_CONS = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ',
+                      'ट','ठ','ड','ढ','ण','त','थ','द','ध','न',
+                      'प','फ','ब','भ','म','य','र','ल','व','श','ष','स','ह'];
+      const H_MATRAS = {
+        none:{label:'',name:'a',suffix:''},
+        aa:{label:'ा',name:'ā',suffix:'ा'},
+        i:{label:'ि',name:'i',suffix:'ि',prepend:true},
+        ii:{label:'ी',name:'ī',suffix:'ी'},
+        u:{label:'ु',name:'u',suffix:'ु'},
+        uu:{label:'ू',name:'ū',suffix:'ू'},
+        e:{label:'े',name:'e',suffix:'े'},
+        ai:{label:'ै',name:'ai',suffix:'ै'},
+        o:{label:'ो',name:'o',suffix:'ो'},
+        au:{label:'ौ',name:'au',suffix:'ौ'},
+        an:{label:'ं',name:'aṃ',suffix:'ं'},
+        ah:{label:'ः',name:'aḥ',suffix:'ः'},
+      };
+      const MATRA_CH = new Set(Object.values(H_MATRAS).map(m => m.suffix).filter(Boolean));
+      const VOW_CH  = new Set(['अ','आ','इ','ई','उ','ऊ','ऋ','ए','ऐ','ओ','औ']);
       const VIRAMA = '्';
-      
+
       return {
-        // Tuner state
-        baseConsonant: 'क', output: 'क', activeMatra: 'none',
-        
-        // Deconstructor state
-        deconstructorInput: 'नमस्ते',
-        deconstructedWord: [],
-        rainbowColors: ['#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f', '#1abc9c', '#e67e22'],
-        
-        // NEW: Playback state
-        playbackRate: '1.0', // '0.7', '1.0', '1.3'
-        isSequencePlaying: false,
-        currentlySpeakingSyllableIndex: null,
-        
-        // Data
-        consonants: HINDI_CONSONANTS,
-        matras: HINDI_MATRAS,
-        
-        init() { this.deconstructWord(); },
-        get matraKeys() { return Object.keys(this.matras); },
-        updateOutput() { this.applyMatra(this.activeMatra); },
-        applyMatra(key) {
-            const m = this.matras[key];
-            this.output = m.prepend ? m.suffix + this.baseConsonant : this.baseConsonant + m.suffix;
+        // … existing state …
+
+        // NEW state for display:
+        rawLatin: '',
+        transliteration: '',
+        baseConsonant: 'क', activeMatra:'none', output:'क',
+        consonants: H_CONS, matras: H_MATRAS,
+        get matraKeys(){ return Object.keys(this.matras) },
+        updateOutput(){ this.applyMatra(this.activeMatra) },
+        applyMatra(k){
+          const m=this.matras[k];
+          this.output = m.prepend
+            ? m.suffix+this.baseConsonant
+            : this.baseConsonant+m.suffix;
+          this.activeMatra=k;
         },
-        playMatra(key) {
-            this.activeMatra = key;
-            this.applyMatra(key);
-            this.playTTS(this.output, '1.0');
-        },
+        playMatra(k){ this.applyMatra(k); this.playTTS(this.output,1.0) },
 
-        // --- Core TTS and Playback Logic ---
-        playTTS(text, rate) {
-            if (!('speechSynthesis' in window) || this.isSequencePlaying) return;
-            window.speechSynthesis.cancel(); // Stop any other single plays
-            const u = new SpeechSynthesisUtterance(text);
-            u.lang = 'hi-IN';
-            u.rate = parseFloat(rate);
-            window.speechSynthesis.speak(u);
-        },
+        // deconstructor state
+        deconstructorInput:'नमस्ते',
+        deconstructedWord:[],
+        rainbowColors:['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#1abc9c','#e67e22'],
+        playbackRate:'1.0',
+        isSequencePlaying:false,
+        currentlySpeakingSyllableIndex:null,
 
-        async playSequence() {
-            if (this.isSequencePlaying || !this.deconstructedWord.length) return;
-            this.isSequencePlaying = true;
-            window.speechSynthesis.cancel();
 
-            // Helper function to speak text and wait for it to finish
-            const speakAndWait = (text) => {
-                return new Promise((resolve, reject) => {
-                    const u = new SpeechSynthesisUtterance(text);
-                    u.lang = 'hi-IN';
-                    u.rate = parseFloat(this.playbackRate);
-                    u.onend = resolve;
-                    u.onerror = reject;
-                    window.speechSynthesis.speak(u);
-                });
-            };
-            const pause = (duration) => new Promise(resolve => setTimeout(resolve, duration));
-
-            try {
-                for (let i = 0; i < this.deconstructedWord.length; i++) {
-                    this.currentlySpeakingSyllableIndex = i;
-                    await speakAndWait(this.deconstructedWord[i].full);
-                    this.currentlySpeakingSyllableIndex = null;
-                    await pause(400 / this.playbackRate); // Pause between syllables
-                }
-                
-                await pause(600 / this.playbackRate); // Longer pause before the full word
-                
-                // Highlight all syllables for the final playback
-                this.currentlySpeakingSyllableIndex = -1; // Special value to indicate all
-                await speakAndWait(this.deconstructorInput);
-
-            } catch (error) {
-                console.error("Speech synthesis failed:", error);
-            } finally {
-                // Cleanup
-                this.isSequencePlaying = false;
-                this.currentlySpeakingSyllableIndex = null;
-            }
-        },
-
-        // --- Deconstructor Logic ---
-        getColor(index) { return this.rainbowColors[index % this.rainbowColors.length]; },
-        deconstructWord() {
-            if (this.isSequencePlaying) window.speechSynthesis.cancel();
-            if (!this.deconstructorInput.trim()) { this.deconstructedWord = []; return; }
-            const word = this.deconstructorInput.trim();
-            const syllables = [];
-            let i = 0;
-            while (i < word.length) {
-                let start = i;
-                if (VOWEL_CHARS.has(word[i])) { // Standalone vowel
-                    i++;
-                } else { // Consonant-based syllable
-                    i++; 
-                    while (i < word.length && word[i] === VIRAMA) { i += 2; } // Clusters
-                }
-                if (i < word.length && MATRA_CHARS.has(word[i])) { i++; } // Matra
-                syllables.push(word.substring(start, i));
-            }
-            
-            this.deconstructedWord = syllables.map(s => {
-                const lastChar = s.slice(-1);
-                let base = s; let matra = '';
-                if (MATRA_CHARS.has(lastChar)) { base = s.slice(0, -1); matra = lastChar; }
-                return { full: s, base: base, matra: matra, isVowel: VOWEL_CHARS.has(s) };
+        init() {
+          this.deconstructWord()
+          // your existing init (e.g. this.deconstructWord())
+          // now wire up our refs:
+          this.$nextTick(() => {
+            const ta = this.$refs.translit;
+            // track raw keystrokes
+            ta.addEventListener('keydown', e => {
+              if (e.key === 'Backspace') {
+                this.rawLatin = this.rawLatin.slice(0, -1);
+              } else if (e.key.length === 1) {
+                this.rawLatin += e.key;
+              }
             });
+            // capture post-transliteration text
+            ta.addEventListener('input', () => {
+              this.transliteration = ta.value;
+              // keep your existing sync into the deconstructor
+              const inp = this.$refs.wordInputField;
+              inp.value = ta.value;
+              inp.dispatchEvent(new Event('input'));
+            });
+          });
+        },
+         getColor(i){ return this.rainbowColors[i%this.rainbowColors.length] },
+
+        deconstructWord(){
+          if(this.isSequencePlaying) window.speechSynthesis.cancel();
+          // sync Alpine to actual DOM input (contains translit text)
+          this.deconstructorInput = this.$refs.wordInputField.value.trim();
+          if(!this.deconstructorInput){ this.deconstructedWord=[]; return }
+          const w=this.deconstructorInput;
+          const syls=[]; let i=0;
+          while(i<w.length){
+            const start=i;
+            if(VOW_CH.has(w[i])) i++;
+            else {
+              i++;
+              while(i<w.length && w[i]===VIRAMA) i+=2;
+            }
+            if(i<w.length && MATRA_CH.has(w[i])) i++;
+            syls.push(w.slice(start,i));
+          }
+          this.deconstructedWord = syls.map(s=>{
+            const last=s.slice(-1), base=MATRA_CH.has(last)?s.slice(0,-1):s;
+            return { full:s, base, matra: MATRA_CH.has(last)?last:'', isVowel:VOW_CH.has(s) };
+          });
+        },
+
+        playTTS(txt,rate){
+          if(!('speechSynthesis' in window)||this.isSequencePlaying) return;
+          window.speechSynthesis.cancel();
+          const u=new SpeechSynthesisUtterance(txt);
+          u.lang='hi-IN'; u.rate=rate;
+          window.speechSynthesis.speak(u);
+        },
+
+        async playSequence(){
+          if(this.isSequencePlaying||!this.deconstructedWord.length) return;
+          this.isSequencePlaying=true;
+          window.speechSynthesis.cancel();
+          const pause=t=>new Promise(r=>setTimeout(r,t));
+          try {
+            for(let i=0;i<this.deconstructedWord.length;i++){
+              this.currentlySpeakingSyllableIndex=i;
+              await new Promise((res,rej)=>{
+                const u=new SpeechSynthesisUtterance(this.deconstructedWord[i].full);
+                u.lang='hi-IN'; u.rate=parseFloat(this.playbackRate);
+                u.onend=res; u.onerror=rej;
+                window.speechSynthesis.speak(u);
+              });
+              this.currentlySpeakingSyllableIndex=null;
+              await pause(400/this.playbackRate);
+            }
+            await pause(600/this.playbackRate);
+            // final full word
+            await new Promise(res=>{
+              const u=new SpeechSynthesisUtterance(this.deconstructorInput);
+              u.lang='hi-IN'; u.rate=parseFloat(this.playbackRate);
+              u.onend=res; window.speechSynthesis.speak(u);
+            });
+          } catch(e){ console.error(e) }
+          finally {
+            this.isSequencePlaying=false;
+            this.currentlySpeakingSyllableIndex=null;
+          }
         }
       }
     }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('matraTuner', matraTuner);
+    });
   </script>
 </body>
 </html>
