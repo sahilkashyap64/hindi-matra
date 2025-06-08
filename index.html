@@ -33,6 +33,11 @@
           <option x-text="c"></option>
         </template>
       </select>
+       <!-- NEW: Preview on Hover Toggle -->
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="hover-preview" x-model="isHoverPreview" class="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500">
+        <label for="hover-preview" class="text-slate-600 cursor-pointer">Preview on Hover</label>
+      </div>
     </div>
 
     <div class="text-6xl h-32 flex items-center justify-center mb-6">
@@ -43,6 +48,8 @@
       <template x-for="key in matraKeys" :key="key">
         <button
           @click="playMatra(key)"
+          @mouseenter="if (isHoverPreview) previewMatra(key)"
+          @mouseleave="if (isHoverPreview) updateOutput()"
           class="group relative w-12 h-40 bg-gradient-to-b from-white to-gray-100 border-2 border-gray-300 rounded-b-lg shadow hover:-translate-y-1 hover:shadow-lg transition transform"
           :class="activeMatra===key ? 'from-yellow-300 to-orange-400 border-yellow-500' : ''"
         >
@@ -184,7 +191,7 @@
       const H_MATRAS = {
         none:{label:'',name:'a',suffix:''},
         aa:{label:'ा',name:'ā',suffix:'ा'},
-        i:{label:'ि',name:'i',suffix:'ि',prepend:true},
+        i:{label:'ि',name:'i',suffix:'ि'},
         ii:{label:'ी',name:'ī',suffix:'ी'},
         u:{label:'ु',name:'u',suffix:'ु'},
         uu:{label:'ू',name:'ū',suffix:'ू'},
@@ -205,9 +212,15 @@
         // NEW state for display:
         rawLatin: '',
         transliteration: '',
-        baseConsonant: 'क', activeMatra:'none', output:'क',
+        baseConsonant: 'क',isHoverPreview: true, activeMatra:'none', output:'क',
         consonants: H_CONS, matras: H_MATRAS,
         get matraKeys(){ return Object.keys(this.matras) },
+        previewMatra(key) {
+          const m = this.matras[key];
+          this.output = m.prepend
+            ? m.suffix + this.baseConsonant
+            : this.baseConsonant + m.suffix;
+        },
         updateOutput(){ this.applyMatra(this.activeMatra) },
         applyMatra(k){
           const m=this.matras[k];
