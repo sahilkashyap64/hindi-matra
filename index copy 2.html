@@ -66,10 +66,17 @@
       directly into the analyzer.
     </p>
     <textarea
+      x-ref="translit"
       id="transliterateTextarea"
       class="w-full h-32 p-4 border-2 border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-yellow-300"
       placeholder="Type here…"
     ></textarea>
+
+    <!-- NEW: Show raw Latin vs. Hindi -->
+    <div class="mt-4 bg-white p-4 rounded-lg shadow-sm space-y-1">
+      <p><span class="font-semibold">Latin Input:</span> <span x-text="rawLatin"></span></p>
+      <p><span class="font-semibold">Hindi Transliteration:</span> <span x-text="transliteration"></span></p>
+    </div>
   </div>
 
   <hr class="border-t-2 border-yellow-400 w-full max-w-3xl mb-8">
@@ -164,18 +171,11 @@
       };
       const control = new google.elements.transliteration.TransliterationControl(opts);
       control.makeTransliteratable(["transliterateTextarea"]);
-
-      const txt = document.getElementById("transliterateTextarea");
-      const inp = document.getElementById("word-input-field");
-      txt.addEventListener("input", () => {
-        inp.value = txt.value;
-        inp.dispatchEvent(new Event("input"));
-      });
     }
     google.setOnLoadCallback(onTranslitLoad);
   </script>
 
-  <!-- YOUR Alpine.js COMPONENT -->
+  <!-- Alpine.js Component -->
   <script>
     function matraTuner() {
       const H_CONS = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ',
@@ -200,7 +200,11 @@
       const VIRAMA = '्';
 
       return {
-        // tuner state
+        // … existing state …
+
+        // NEW state for display:
+        rawLatin: '',
+        transliteration: '',
         baseConsonant: 'क', activeMatra:'none', output:'क',
         consonants: H_CONS, matras: H_MATRAS,
         get matraKeys(){ return Object.keys(this.matras) },
@@ -222,8 +226,32 @@
         isSequencePlaying:false,
         currentlySpeakingSyllableIndex:null,
 
-        init(){ this.deconstructWord() },
-        getColor(i){ return this.rainbowColors[i%this.rainbowColors.length] },
+
+        init() {
+          this.deconstructWord()
+          // your existing init (e.g. this.deconstructWord())
+          // now wire up our refs:
+          this.$nextTick(() => {
+            const ta = this.$refs.translit;
+            // track raw keystrokes
+            ta.addEventListener('keydown', e => {
+              if (e.key === 'Backspace') {
+                this.rawLatin = this.rawLatin.slice(0, -1);
+              } else if (e.key.length === 1) {
+                this.rawLatin += e.key;
+              }
+            });
+            // capture post-transliteration text
+            ta.addEventListener('input', () => {
+              this.transliteration = ta.value;
+              // keep your existing sync into the deconstructor
+              const inp = this.$refs.wordInputField;
+              inp.value = ta.value;
+              inp.dispatchEvent(new Event('input'));
+            });
+          });
+        },
+         getColor(i){ return this.rainbowColors[i%this.rainbowColors.length] },
 
         deconstructWord(){
           if(this.isSequencePlaying) window.speechSynthesis.cancel();
