@@ -14,7 +14,7 @@
     href="https://www.google.com/uds/modules/elements/transliteration/api.css"
     rel="stylesheet"
   />
-   <script type="text/javascript" src="gtransapi.js"></script>
+  <script type="text/javascript" src="gtransapi.js"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 flex flex-col items-center p-4">
 
@@ -33,6 +33,11 @@
           <option x-text="c"></option>
         </template>
       </select>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="hover-preview" x-model="isHoverPreview"
+               class="w-4 h-4 text-orange-600 rounded border-slate-300 focus:ring-orange-500">
+        <label for="hover-preview" class="text-slate-600 cursor-pointer">Preview on Hover</label>
+      </div>
     </div>
 
     <div class="text-6xl h-32 flex items-center justify-center mb-6">
@@ -43,6 +48,8 @@
       <template x-for="key in matraKeys" :key="key">
         <button
           @click="playMatra(key)"
+          @mouseenter="if (isHoverPreview) previewMatra(key)"
+          @mouseleave="if (isHoverPreview) updateOutput()"
           class="group relative w-12 h-40 bg-gradient-to-b from-white to-gray-100 border-2 border-gray-300 rounded-b-lg shadow hover:-translate-y-1 hover:shadow-lg transition transform"
           :class="activeMatra===key ? 'from-yellow-300 to-orange-400 border-yellow-500' : ''"
         >
@@ -61,9 +68,10 @@
   <div class="max-w-3xl w-full mb-8">
     <h2 class="text-2xl font-bold text-orange-600 mb-2">English → Hindi Transliteration</h2>
     <p class="text-gray-600 mb-2">
-      Type in Latin letters below and press <b>space</b>, And press <kbd class="px-1 bg-gray-200 rounded">Ctrl</kbd>+
-      <kbd class="px-1 bg-gray-200 rounded">G</kbd> if you want to toggle between hindi and english. Your Hindi text will flow
-      directly into the analyzer.
+      Type in Latin letters below and press <b>space</b>, and press
+      <kbd class="px-1 bg-gray-200 rounded">Ctrl</kbd>+
+      <kbd class="px-1 bg-gray-200 rounded">G</kbd> to toggle.
+      <sub class="text-xs text-gray-500">If it glitches, copy the text into the analyzer.</sub>
     </p>
     <textarea
       x-ref="translit"
@@ -72,10 +80,9 @@
       placeholder="Type here…"
     ></textarea>
 
-    <!-- NEW: Show raw Latin vs. Hindi -->
     <div class="mt-4 bg-white p-4 rounded-lg shadow-sm space-y-1">
-      <p><span class="font-semibold">Latin Input:</span> <span x-text="rawLatin"></span></p>
-      <p><span class="font-semibold">Hindi Transliteration:</span> <span x-text="transliteration"></span></p>
+      <p><strong>Latin Input:</strong> <span x-text="rawLatin"></span></p>
+      <p><strong>Hindi Transliteration:</strong> <span x-text="transliteration"></span></p>
     </div>
   </div>
 
@@ -106,36 +113,6 @@
       </button>
     </div>
 
-    <div
-      class="flex flex-col sm:flex-row sm:items-center gap-4 mb-6"
-      x-show="deconstructedWord.length"
-    >
-      <button
-        @click="playSequence()"
-        :disabled="isSequencePlaying"
-        class="flex items-center gap-2 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 transition"
-      >
-        <span x-show="!isSequencePlaying">▶️ Play All</span>
-        <span x-show="isSequencePlaying">Playing…</span>
-      </button>
-      <div class="flex gap-2 bg-gray-100 p-2 rounded-lg">
-        <template x-for="rate in ['0.7','1.0','1.3']" :key="rate">
-          <label
-            class="flex items-center gap-1 cursor-pointer px-3 py-1 rounded-md hover:bg-white transition"
-            :class="playbackRate===rate ? 'bg-white text-orange-600 ring-2 ring-yellow-300' : ''"
-          >
-            <input
-              type="radio"
-              :value="rate"
-              x-model="playbackRate"
-              class="hidden"
-            />
-            <span x-text="rate==='0.7' ? 'Slow' : rate==='1.0' ? 'Normal' : 'Fast'"></span>
-          </label>
-        </template>
-      </div>
-    </div>
-
     <div class="flex flex-wrap gap-4">
       <template x-if="!deconstructedWord.length">
         <span class="text-gray-400">Analysis will appear here…</span>
@@ -143,23 +120,22 @@
       <template x-for="(syll, i) in deconstructedWord" :key="i">
         <div
           @click="playTTS(syll.full, playbackRate)"
-          class="flex items-baseline gap-1 p-3 bg-gray-200 rounded-xl text-2xl font-semibold cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
+          class="flex flex-col items-center gap-1 p-3 bg-gray-200 rounded-xl cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
           :class="currentlySpeakingSyllableIndex===i ? 'bg-blue-500 text-white scale-105' : ''"
           :style="{ borderColor: getColor(i) }"
         >
-          <span x-text="syll.base"></span>
-          <template x-if="syll.matra">
-            <span x-text="syll.matra"></span>
-          </template>
-          <template x-if="!syll.matra && !syll.isVowel">
-            <span class="text-gray-500 text-lg">(+अ)</span>
-          </template>
+          <!-- full ligature -->
+          <div class="text-3xl font-bold">
+            <span x-text="syll.full"></span>
+          </div>
+          <!-- built-from line -->
+          <div class="text-sm text-gray-600" x-text="syll.parts.length>1 ? 'Built using: ' + syll.parts.join(' + ') : ''"></div>
         </div>
       </template>
     </div>
   </div>
 
-  <!-- Initialize Transliteration & Sync -->
+  <!-- Google Transliteration Init -->
   <script>
     google.load("elements","1",{packages:"transliteration"});
     function onTranslitLoad() {
@@ -184,7 +160,7 @@
       const H_MATRAS = {
         none:{label:'',name:'a',suffix:''},
         aa:{label:'ा',name:'ā',suffix:'ा'},
-        i:{label:'ि',name:'i',suffix:'ि',prepend:true},
+        i:{label:'ि',name:'i',suffix:'ि'},
         ii:{label:'ी',name:'ī',suffix:'ी'},
         u:{label:'ु',name:'u',suffix:'ु'},
         uu:{label:'ू',name:'ū',suffix:'ू'},
@@ -195,85 +171,141 @@
         an:{label:'ं',name:'aṃ',suffix:'ं'},
         ah:{label:'ः',name:'aḥ',suffix:'ः'},
       };
-      const MATRA_CH = new Set(Object.values(H_MATRAS).map(m => m.suffix).filter(Boolean));
+      const MATRA_CH = new Set(Object.values(H_MATRAS).map(m=>m.suffix).filter(Boolean));
       const VOW_CH  = new Set(['अ','आ','इ','ई','उ','ऊ','ऋ','ए','ऐ','ओ','औ']);
       const VIRAMA = '्';
 
-      return {
-        // … existing state …
+      // your full list of conjuncts
+      const conjuncts_str = `
+        क्क क्त क्त्य क्त्र क्त्व क्य क्र क्ष क्ष्म
+        ख्य
+        ग्ग ग्ध ग्न ग्न्य ग्य ग्र ग्र्य
+        घ्न घ्र घ्व 
+        ङ्क ङ्ग
+        च्च च्च्य च्छ च्य 
+        ज्ज ज्ञ ज्य ज्र ज्व 
+        ञ्च ञ्ज
+        ट्ट ट्य त्र
+        ठ्य ठ्ठ 
+        ड्ग ड्य ड्र 
+        ढ्य 
+        ण्ट ण्ठ ण्ड ण्ड्य ण्ड्र ण्ण ण्व 
+        त्त त्त्य त्त्र त्त्व त्थ त्न त्न्य त्प त्म त्म्य त्य त्र त्र्य त्व त्स
+        थ्य थ्व 
+        द्ग द्द द्ध द्भ द्भ्य द्म द्य द्र द्व द्व्य 
+        ध्म ध्य ध्र ध्व 
+        न्त न्त्य न्त्र न्द न्द्य न्द्र न्न न्य
+        प्त प्त्व प्य प्र
+       -ब्ज ब्द ब्ध ब्र भ्य भ्र
+        म्प म्ब म्य म्र 
+        य्य 
+        र्क र्ग र्च र्च्य र्त र्द र्ध र्ध्य र्न्य
+        ल्क्य ल्प ल्य ल्ल 
+        व्य व्र 
+        श्च श्च्य श्छ श्न श्म श्य श्र श्ल श्व  
+        ष्ट ष्ट्य ष्ठ ष्ण
+        स्त स्त्य स्त्र स्थ स्न स्म स्य स्र
+        ह्ण ह्न ह्म ह्य ह्र ह्व
+      `.trim().replace(/\s+/g,' ').split(' ');
 
-        // NEW state for display:
-        rawLatin: '',
-        transliteration: '',
-        baseConsonant: 'क', activeMatra:'none', output:'क',
-        consonants: H_CONS, matras: H_MATRAS,
+      // sort longest first so we match the biggest possible cluster
+      const CONJUNCTS = conjuncts_str.sort((a,b)=>b.length - a.length);
+
+      return {
+        rawLatin:'', transliteration:'',
+        baseConsonant:'क', isHoverPreview:true,
+        activeMatra:'none', output:'क',
+        consonants:H_CONS, matras:H_MATRAS,
         get matraKeys(){ return Object.keys(this.matras) },
+
+        previewMatra(key){
+          const m=this.matras[key];
+          this.output = m.prepend ? m.suffix+this.baseConsonant : this.baseConsonant+m.suffix;
+        },
         updateOutput(){ this.applyMatra(this.activeMatra) },
         applyMatra(k){
           const m=this.matras[k];
-          this.output = m.prepend
-            ? m.suffix+this.baseConsonant
-            : this.baseConsonant+m.suffix;
+          this.output = m.prepend ? m.suffix+this.baseConsonant : this.baseConsonant+m.suffix;
           this.activeMatra=k;
         },
         playMatra(k){ this.applyMatra(k); this.playTTS(this.output,1.0) },
 
-        // deconstructor state
         deconstructorInput:'नमस्ते',
         deconstructedWord:[],
         rainbowColors:['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#1abc9c','#e67e22'],
-        playbackRate:'1.0',
-        isSequencePlaying:false,
-        currentlySpeakingSyllableIndex:null,
+        playbackRate:'1.0', isSequencePlaying:false, currentlySpeakingSyllableIndex:null,
 
-
-        init() {
-          this.deconstructWord()
-          // your existing init (e.g. this.deconstructWord())
-          // now wire up our refs:
-          this.$nextTick(() => {
-            const ta = this.$refs.translit;
-            // track raw keystrokes
-            ta.addEventListener('keydown', e => {
-              if (e.key === 'Backspace') {
-                this.rawLatin = this.rawLatin.slice(0, -1);
-              } else if (e.key.length === 1) {
-                this.rawLatin += e.key;
-              }
+        init(){
+          this.deconstructWord();
+          this.$nextTick(()=>{
+            const ta=this.$refs.translit;
+            ta.addEventListener('keydown',e=>{
+              if(e.key==='Backspace') this.rawLatin=this.rawLatin.slice(0,-1);
+              else if(e.key.length===1) this.rawLatin+=e.key;
             });
-            // capture post-transliteration text
-            ta.addEventListener('input', () => {
-              this.transliteration = ta.value;
-              // keep your existing sync into the deconstructor
-              const inp = this.$refs.wordInputField;
-              inp.value = ta.value;
+            ta.addEventListener('input',()=>{
+              this.transliteration=ta.value;
+              const inp=this.$refs.wordInputField;
+              inp.value=ta.value;
               inp.dispatchEvent(new Event('input'));
             });
           });
         },
-         getColor(i){ return this.rainbowColors[i%this.rainbowColors.length] },
+
+        getColor(i){ return this.rainbowColors[i % this.rainbowColors.length] },
 
         deconstructWord(){
           if(this.isSequencePlaying) window.speechSynthesis.cancel();
-          // sync Alpine to actual DOM input (contains translit text)
           this.deconstructorInput = this.$refs.wordInputField.value.trim();
-          if(!this.deconstructorInput){ this.deconstructedWord=[]; return }
-          const w=this.deconstructorInput;
-          const syls=[]; let i=0;
-          while(i<w.length){
-            const start=i;
-            if(VOW_CH.has(w[i])) i++;
-            else {
-              i++;
-              while(i<w.length && w[i]===VIRAMA) i+=2;
+          const w = this.deconstructorInput;
+          if(!w){ this.deconstructedWord=[]; return; }
+
+          const syls = [];
+          let i = 0;
+          while(i < w.length){
+            // 1) see if any known conjunct matches here
+            let found = null;
+            for(const cj of CONJUNCTS){
+              if(w.startsWith(cj, i)){
+                found = cj;
+                break;
+              }
             }
-            if(i<w.length && MATRA_CH.has(w[i])) i++;
-            syls.push(w.slice(start,i));
+            if(found){
+              // split found on virama for parts
+              const parts = found.split(VIRAMA).map((p,idx,arr)=>{
+                return idx < arr.length-1 ? p+VIRAMA : p;
+              });
+              syls.push({ full:found, parts });
+              i += found.length;
+              continue;
+            }
+
+            // 2) vowel
+            if(VOW_CH.has(w[i])){
+              syls.push({ full:w[i], parts:[w[i]] });
+              i++;
+              continue;
+            }
+
+            // 3) simple consonant+matra
+            const start = i;
+            i++;
+            if(i < w.length && MATRA_CH.has(w[i])) i++;
+            const slice = w.slice(start, i);
+            // split off trailing matra
+            const last = slice.slice(-1);
+            const core = MATRA_CH.has(last) ? slice.slice(0,-1) : slice;
+            // build parts
+            const parts = core.split(VIRAMA).map((p,idx,arr)=>{
+              return idx < arr.length-1 ? p+VIRAMA : p;
+            });
+            if(MATRA_CH.has(last)) parts.push(last);
+
+            syls.push({ full:slice, parts });
           }
-          this.deconstructedWord = syls.map(s=>{
-            const last=s.slice(-1), base=MATRA_CH.has(last)?s.slice(0,-1):s;
-            return { full:s, base, matra: MATRA_CH.has(last)?last:'', isVowel:VOW_CH.has(s) };
-          });
+
+          this.deconstructedWord = syls;
         },
 
         playTTS(txt,rate){
@@ -289,7 +321,7 @@
           this.isSequencePlaying=true;
           window.speechSynthesis.cancel();
           const pause=t=>new Promise(r=>setTimeout(r,t));
-          try {
+          try{
             for(let i=0;i<this.deconstructedWord.length;i++){
               this.currentlySpeakingSyllableIndex=i;
               await new Promise((res,rej)=>{
@@ -302,14 +334,13 @@
               await pause(400/this.playbackRate);
             }
             await pause(600/this.playbackRate);
-            // final full word
             await new Promise(res=>{
               const u=new SpeechSynthesisUtterance(this.deconstructorInput);
               u.lang='hi-IN'; u.rate=parseFloat(this.playbackRate);
               u.onend=res; window.speechSynthesis.speak(u);
             });
           } catch(e){ console.error(e) }
-          finally {
+          finally{
             this.isSequencePlaying=false;
             this.currentlySpeakingSyllableIndex=null;
           }
@@ -317,7 +348,7 @@
       }
     }
 
-    document.addEventListener('alpine:init', () => {
+    document.addEventListener('alpine:init',()=>{
       Alpine.data('matraTuner', matraTuner);
     });
   </script>
