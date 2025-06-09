@@ -15,6 +15,7 @@
     rel="stylesheet"
   />
    <script type="text/javascript" src="gtransapi.js"></script>
+
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 flex flex-col items-center p-4">
 
@@ -81,7 +82,7 @@
 
   <hr class="border-t-2 border-yellow-400 w-full max-w-3xl mb-8">
 
-  <!-- Word Deconstructor (MODIFIED) -->
+  <!-- Word Deconstructor (Unchanged) -->
   <div class="bg-white rounded-2xl shadow-lg max-w-3xl w-full p-6 mb-8">
     <h2 class="text-2xl font-bold text-orange-600 mb-2">Word Deconstructor</h2>
     <p class="text-gray-600 mb-4">
@@ -96,7 +97,7 @@
         @input="deconstructWord()"
         @keydown.enter="deconstructWord()"
         class="flex-1 border-2 border-gray-300 rounded-lg px-4 py-2 text-xl focus:outline-none focus:ring-2 focus:ring-yellow-300"
-        placeholder="Type 'pranam' or प्रणाम"
+        placeholder="Type 'kripa' or कृपा or 'pranam' or प्रणाम"
       />
       <button
         @click="deconstructWord()"
@@ -120,21 +121,17 @@
       </div>
     </div>
 
-    <!-- MODIFIED deconstructor rendering -->
     <div class="flex flex-wrap gap-4">
       <template x-if="!deconstructedWord.length">
         <span class="text-gray-400">Analysis will appear here…</span>
       </template>
       <template x-for="(syll, i) in deconstructedWord" :key="i">
-        <!-- Each syllable is now a flex-col container -->
         <div
           @click="playTTS(syll.full, playbackRate)"
           class="flex flex-col p-3 bg-gray-200 rounded-xl cursor-pointer transform transition hover:-translate-y-1 hover:shadow-lg"
           :class="currentlySpeakingSyllableIndex===i ? 'bg-blue-500 text-white scale-105' : ''"
         >
-          <!-- Top part: The syllable display -->
           <div class="flex items-baseline gap-1 text-2xl font-semibold">
-             <!-- Render from parts for correct styling -->
             <template x-for="(part, pIndex) in syll.parts" :key="pIndex">
                 <span x-text="part" :class="{
                     'text-gray-400': part === VIRAMA,
@@ -145,7 +142,6 @@
               <span class="text-gray-500 text-lg" :class="{'!text-white': currentlySpeakingSyllableIndex===i}">(+अ)</span>
             </template>
           </div>
-          <!-- Bottom part: The "Built" text -->
           <div
             x-show="syll.parts.length > 1"
             class="text-xs text-gray-600 italic mt-1"
@@ -177,9 +173,24 @@
   <script>
     function matraTuner() {
       const H_CONS = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ','ट','ठ','ड','ढ','ण','त','थ','द','ध','न','प','फ','ब','भ','म','य','र','ल','व','श','ष','स','ह'];
+      // --- CHANGE IS HERE ---
       const H_MATRAS = {
-        none:{label:'',name:'a',suffix:''},aa:{label:'ा',name:'ā',suffix:'ा'},i:{label:'ि',name:'i',suffix:'ि'},ii:{label:'ी',name:'ī',suffix:'ी'},u:{label:'ु',name:'u',suffix:'ु'},uu:{label:'ू',name:'ū',suffix:'ू'},e:{label:'े',name:'e',suffix:'े'},ai:{label:'ै',name:'ai',suffix:'ै'},o:{label:'ो',name:'o',suffix:'ो'},au:{label:'ौ',name:'au',suffix:'ौ'},an:{label:'ं',name:'aṃ',suffix:'ं'},ah:{label:'ः',name:'aḥ',suffix:'ः'},
+        none:{label:'',name:'a',suffix:''},
+        aa:{label:'ा',name:'ā',suffix:'ा'},
+        i:{label:'ि',name:'i',suffix:'ि'},
+        ii:{label:'ी',name:'ī',suffix:'ी'},
+        u:{label:'ु',name:'u',suffix:'ु'},
+        uu:{label:'ू',name:'ū',suffix:'ू'},
+        r:{label:'ृ',name:'ṛ',suffix:'ृ'}, // ADDED THIS LINE
+        e:{label:'े',name:'e',suffix:'े'},
+        ai:{label:'ै',name:'ai',suffix:'ै'},
+        o:{label:'ो',name:'o',suffix:'ो'},
+        au:{label:'ौ',name:'au',suffix:'ौ'},
+        an:{label:'ं',name:'aṃ',suffix:'ं'},
+        ah:{label:'ः',name:'aḥ',suffix:'ः'},
       };
+      // --- END OF CHANGE ---
+
       const MATRA_CH = new Set(Object.values(H_MATRAS).map(m => m.suffix).filter(Boolean));
       const VOW_CH  = new Set(['अ','आ','इ','ई','उ','ऊ','ऋ','ए','ऐ','ओ','औ']);
       const VIRAMA = '्';
@@ -190,7 +201,7 @@
         baseConsonant: 'क',isHoverPreview: true, activeMatra:'none', output:'क',
         consonants: H_CONS, matras: H_MATRAS,
         get matraKeys(){ return Object.keys(this.matras) },
-        deconstructorInput:'नमस्ते', deconstructedWord:[],
+        deconstructorInput:'कृपा', deconstructedWord:[],
         playbackRate:'1.0', isSequencePlaying:false, currentlySpeakingSyllableIndex:null,
 
         init() {
@@ -217,7 +228,6 @@
         },
         playMatra(k){ this.applyMatra(k); this.playTTS(this.output,1.0) },
 
-        // MODIFIED deconstructWord function
         deconstructWord(){
           if(this.isSequencePlaying) window.speechSynthesis.cancel();
           this.deconstructorInput = this.$refs.wordInputField.value.trim();
@@ -228,42 +238,29 @@
           let i = 0;
           while(i < w.length){
             const start = i;
-            if (VOW_CH.has(w[i])) { // It's a standalone vowel
+            if (VOW_CH.has(w[i])) {
                 i++;
-            } else { // It's a consonant cluster
-                i++; // Move past the first consonant
-                // Keep consuming consonant + virama pairs, ensuring we don't go past the end
+            } else {
+                i++;
                 while(i + 1 < w.length && w[i] === VIRAMA) { i += 2; }
             }
-            // After the cluster/vowel, check for a matra
             if(i < w.length && MATRA_CH.has(w[i])) { i++; }
             sylls.push(w.slice(start,i));
           }
 
-          // Map found syllables to the new rich data structure with 'parts'
           this.deconstructedWord = sylls.map(s => {
             const result = { full: s, matra: '', isVowel: VOW_CH.has(s[0]), parts: [] };
-            
             if (result.isVowel) {
                 result.parts.push(s);
                 return result;
             }
-
             const lastChar = s.slice(-1);
             const base = MATRA_CH.has(lastChar) ? s.slice(0, -1) : s;
             if (MATRA_CH.has(lastChar)) result.matra = lastChar;
-
-            // Deconstruct the base into its parts (consonants and viramas)
-            // 'flatMap' splits by virama and re-inserts it.
             result.parts = base.split(VIRAMA).flatMap((p, idx, arr) => {
                 return (p && idx < arr.length - 1) ? [p, VIRAMA] : [p];
-            }).filter(Boolean); // remove any empty strings that might result
-
-            // Add the matra to the parts list if it exists
-            if(result.matra) {
-                result.parts.push(result.matra);
-            }
-            
+            }).filter(Boolean);
+            if(result.matra) { result.parts.push(result.matra); }
             return result;
           });
         },
