@@ -94,7 +94,7 @@
         <div class="col-span-full text-gray-400 text-center">Analysis will appear here…</div>
       </template>
       <template x-for="(syll,i) in deconstructedWord" :key="i">
-        <div @click="playTTS(syll.full,pagebackRate)"
+        <div @click="playTTS(syll.full, playbackRate)"
           class="flex flex-col items-center p-4 bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer"
           :class="currentlySpeakingSyllableIndex===i?'ring-4 ring-yellow-300 scale-105':''">
           <div class="text-4xl font-bold mb-2" x-text="syll.full"></div>
