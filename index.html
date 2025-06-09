@@ -9,7 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Alpine.js -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <!-- Google Transliteration API -->
+  <!-- Google Transliteration API (Correct CDN links) -->
   <link
     href="https://www.google.com/uds/modules/elements/transliteration/api.css"
     rel="stylesheet"
@@ -82,7 +82,7 @@
 
   <hr class="border-t-2 border-yellow-400 w-full max-w-3xl mb-8">
 
-  <!-- Word Deconstructor (Unchanged) -->
+  <!-- Word Deconstructor -->
   <div class="bg-white rounded-2xl shadow-lg max-w-3xl w-full p-6 mb-8">
     <h2 class="text-2xl font-bold text-orange-600 mb-2">Word Deconstructor</h2>
     <p class="text-gray-600 mb-4">
@@ -121,6 +121,7 @@
       </div>
     </div>
 
+    <!-- HTML is correct, the error was in the JS scope -->
     <div class="flex flex-wrap gap-4">
       <template x-if="!deconstructedWord.length">
         <span class="text-gray-400">Analysis will appear here…</span>
@@ -172,36 +173,24 @@
   <!-- Alpine.js Component (MODIFIED) -->
   <script>
     function matraTuner() {
+      // These constants can stay here as they are only used during setup
       const H_CONS = ['क','ख','ग','घ','ङ','च','छ','ज','झ','ञ','ट','ठ','ड','ढ','ण','त','थ','द','ध','न','प','फ','ब','भ','म','य','र','ल','व','श','ष','स','ह'];
-      // --- CHANGE IS HERE ---
       const H_MATRAS = {
-        none:{label:'',name:'a',suffix:''},
-        aa:{label:'ा',name:'ā',suffix:'ा'},
-        i:{label:'ि',name:'i',suffix:'ि'},
-        ii:{label:'ी',name:'ī',suffix:'ी'},
-        u:{label:'ु',name:'u',suffix:'ु'},
-        uu:{label:'ू',name:'ū',suffix:'ू'},
-        r:{label:'ृ',name:'ṛ',suffix:'ृ'}, // ADDED THIS LINE
-        e:{label:'े',name:'e',suffix:'े'},
-        ai:{label:'ै',name:'ai',suffix:'ै'},
-        o:{label:'ो',name:'o',suffix:'ो'},
-        au:{label:'ौ',name:'au',suffix:'ौ'},
-        an:{label:'ं',name:'aṃ',suffix:'ं'},
-        ah:{label:'ः',name:'aḥ',suffix:'ः'},
+        none:{label:'',name:'a',suffix:''},aa:{label:'ा',name:'ā',suffix:'ा'},i:{label:'ि',name:'i',suffix:'ि'},ii:{label:'ी',name:'ī',suffix:'ी'},u:{label:'ु',name:'u',suffix:'ु'},uu:{label:'ू',name:'ū',suffix:'ू'},r:{label:'ृ',name:'ṛ',suffix:'ृ'}, e:{label:'े',name:'e',suffix:'े'},ai:{label:'ै',name:'ai',suffix:'ै'},o:{label:'ो',name:'o',suffix:'ो'},au:{label:'ौ',name:'au',suffix:'ौ'},an:{label:'ं',name:'aṃ',suffix:'ं'},ah:{label:'ः',name:'aḥ',suffix:'ः'},
       };
-      // --- END OF CHANGE ---
-
-      const MATRA_CH = new Set(Object.values(H_MATRAS).map(m => m.suffix).filter(Boolean));
       const VOW_CH  = new Set(['अ','आ','इ','ई','उ','ऊ','ऋ','ए','ऐ','ओ','औ']);
-      const VIRAMA = '्';
-
+      
       return {
-        // State remains the same
+        // --- FIX 1: Make VIRAMA and MATRA_CH public properties ---
+        VIRAMA: '्',
+        MATRA_CH: new Set(Object.values(H_MATRAS).map(m => m.suffix).filter(Boolean)),
+
+        // --- Rest of the state ---
         rawLatin: '', transliteration: '',
-        baseConsonant: 'क',isHoverPreview: true, activeMatra:'none', output:'क',
+        baseConsonant: 'क', isHoverPreview: true, activeMatra:'none', output:'क',
         consonants: H_CONS, matras: H_MATRAS,
         get matraKeys(){ return Object.keys(this.matras) },
-        deconstructorInput:'कृपा', deconstructedWord:[],
+        deconstructorInput:'नमस्ते', deconstructedWord:[],
         playbackRate:'1.0', isSequencePlaying:false, currentlySpeakingSyllableIndex:null,
 
         init() {
@@ -215,7 +204,7 @@
             ta.addEventListener('input', () => {
               this.transliteration = ta.value;
               this.$refs.wordInputField.value = ta.value;
-              this.deconstructWord(); // Analyze automatically
+              this.deconstructWord();
             });
           });
         },
@@ -238,13 +227,12 @@
           let i = 0;
           while(i < w.length){
             const start = i;
-            if (VOW_CH.has(w[i])) {
-                i++;
-            } else {
-                i++;
-                while(i + 1 < w.length && w[i] === VIRAMA) { i += 2; }
+            if (VOW_CH.has(w[i])) { i++; } 
+            else {
+              i++;
+              while(i + 1 < w.length && w[i] === this.VIRAMA) { i += 2; }
             }
-            if(i < w.length && MATRA_CH.has(w[i])) { i++; }
+            if(i < w.length && this.MATRA_CH.has(w[i])) { i++; }
             sylls.push(w.slice(start,i));
           }
 
@@ -255,11 +243,12 @@
                 return result;
             }
             const lastChar = s.slice(-1);
-            const base = MATRA_CH.has(lastChar) ? s.slice(0, -1) : s;
-            if (MATRA_CH.has(lastChar)) result.matra = lastChar;
-            result.parts = base.split(VIRAMA).flatMap((p, idx, arr) => {
-                return (p && idx < arr.length - 1) ? [p, VIRAMA] : [p];
-            }).filter(Boolean);
+            const base = this.MATRA_CH.has(lastChar) ? s.slice(0, -1) : s;
+            if (this.MATRA_CH.has(lastChar)) result.matra = lastChar;
+            
+            // --- FIX 2: More robust string splitting for 'parts' ---
+            result.parts = [...base]; // This correctly splits Unicode strings into characters
+            
             if(result.matra) { result.parts.push(result.matra); }
             return result;
           });
@@ -290,7 +279,7 @@
               this.currentlySpeakingSyllableIndex=null;
               await pause(400/this.playbackRate);
             }
-            await pause(600/this.playbackRate);
+             await pause(600/this.playbackRate);
             await new Promise(res=>{
               const u=new SpeechSynthesisUtterance(this.deconstructorInput);
               u.lang='hi-IN'; u.rate=parseFloat(this.playbackRate);
