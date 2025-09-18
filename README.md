@@ -35,6 +35,22 @@ python -m http.server 8000
 
 Then open <http://localhost:8000/index.html>.
 
+## Deployment & previews
+
+- Continuous deployment to GitHub Pages is handled by the `Deploy site to GitHub Pages`
+  workflow. It packages `index.html` and the accompanying scripts into a `public`
+  directory and publishes the result to the `gh-pages` branch using the
+  [`deploy-pages`](https://github.com/actions/deploy-pages) action.
+- Pull request previews are created by the `Deploy PR Preview` workflow via
+  [`rossjrw/pr-preview-action`](https://github.com/marketplace/actions/deploy-pr-preview).
+  When a PR is opened or updated the action copies the static files into a per-PR
+  folder (for example `pr-preview/pr-123/`) so reviewers can click through the
+  changes before merging.
+- The GitHub Pages site must be enabled for the repository. Visit
+  **Settings → Pages** and set the source to **GitHub Actions** (or ensure the
+  `gh-pages` branch is published). Until that is configured, preview URLs will
+  return a 404 because GitHub Pages has no content to serve yet.
+
 ## Usage tips
 
 - Click **Start Speaking** to begin recording. Use the dropdown to switch between
