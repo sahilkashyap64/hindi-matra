@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hindi Matra Tuner & Deconstructor</title>
+  <style>[x-cloak]{display:none!important;}</style>
 
   <!-- Tailwind via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Sanscript for Roman → Devanagari conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/sanscript@1.0.3/sanscript.min.js" defer></script>
   <!-- Alpine.js -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <!-- Google Transliteration API -->
@@ -51,6 +54,24 @@
     <textarea x-ref="translit" id="transliterateTextarea"
       class="w-full h-32 p-4 border-2 border-gray-300 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-yellow-300"
       placeholder="Type here…"></textarea>
+    <div class="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <button type="button" @click="toggleListening()" :disabled="speechSupported!==true"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-white transition"
+        :class="isListening ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed'">
+        <span x-show="!isListening" x-cloak>🎤 Start Speaking</span>
+        <span x-show="isListening" x-cloak>⏹ Stop Listening</span>
+      </button>
+      <div class="flex items-center gap-2">
+        <label for="speech-lang" class="text-sm text-gray-600">Recognition language</label>
+        <select id="speech-lang" x-model="recognitionLang"
+          class="border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-300">
+          <option value="hi-IN">Hindi (hi-IN)</option>
+          <option value="en-IN">English / Hinglish (en-IN)</option>
+        </select>
+      </div>
+    </div>
+    <p class="mt-2 text-sm text-gray-500" x-show="speechSupported===false" x-cloak>Speech recognition is not supported in this browser.</p>
+    <p class="mt-2 text-sm text-red-600" x-show="speechError" x-text="speechError" x-cloak></p>
     <div class="mt-4 bg-white p-4 rounded-lg shadow-sm space-y-1">
       <p><strong>Latin Input:</strong> <span x-text="rawLatin"></span></p>
       <p><strong>Hindi:</strong> <span x-text="transliteration"></span></p>
@@ -151,12 +172,17 @@
         rawLatin:'',transliteration:'',baseConsonant:'क',isHoverPreview:true,activeMatra:'none',output:'क',
         consonants:H_CONS,matras:H_MATRAS,get matraKeys(){return Object.keys(this.matras)},
         deconstructorInput:'',deconstructedWord:[],playbackRate:'1.0',isSequencePlaying:false,currentlySpeakingSyllableIndex:null,
-        init(){this.deconstructWord();this.$nextTick(()=>{const ta=this.$refs.translit;ta.addEventListener('keydown',e=>{if(e.key==='Backspace')this.rawLatin=this.rawLatin.slice(0,-1);else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey)this.rawLatin+=e.key});ta.addEventListener('input',()=>{this.transliteration=ta.value;this.$refs.wordInputField.value=ta.value;this.deconstructWord()});})},
+        speechSupported:null,isListening:false,recognition:null,recognitionLang:'hi-IN',speechError:'',
+        init(){this.deconstructWord();this.setupSpeechRecognition();this.$watch('recognitionLang',lang=>{if(this.recognition)this.recognition.lang=lang;});this.$nextTick(()=>{const ta=this.$refs.translit;ta.addEventListener('keydown',e=>{if(e.key==='Backspace')this.rawLatin=this.rawLatin.slice(0,-1);else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey)this.rawLatin+=e.key});ta.addEventListener('input',()=>{this.transliteration=ta.value;this.$refs.wordInputField.value=ta.value;this.deconstructWord()});})},
         previewMatra(k){this.output=this.baseConsonant+this.matras[k].suffix},
         updateOutput(){this.applyMatra(this.activeMatra)},
         applyMatra(k){this.output=this.baseConsonant+this.matras[k].suffix;this.activeMatra=k},
         playMatra(k){this.applyMatra(k);this.playTTS(this.output,this.playbackRate)},
         deconstructWord(){if(this.isSequencePlaying)window.speechSynthesis.cancel();this.deconstructorInput=this.$refs.wordInputField.value.trim();if(!this.deconstructorInput){this.deconstructedWord=[];return;}const w=this.deconstructorInput;const sylls=[];let i=0;while(i<w.length){const start=i;if(VOW_CH.has(w[i]))i++;else{ i++;while(i+1<w.length&&w[i]===VIRAMA)i+=2;}if(i<w.length&&this.MATRA_CH.has(w[i]))i++;sylls.push(w.slice(start,i));}this.deconstructedWord=sylls.map(s=>{const last=s.slice(-1),base=this.MATRA_CH.has(last)?s.slice(0,-1):s,parts=[...base];if(this.MATRA_CH.has(last))parts.push(last);return{full:s,parts}})},
+        setupSpeechRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){this.speechSupported=false;return;}this.speechSupported=true;this.recognition=new SR();this.recognition.lang=this.recognitionLang;this.recognition.continuous=false;this.recognition.interimResults=true;this.recognition.onstart=()=>{this.isListening=true;this.speechError='';};this.recognition.onend=()=>{this.isListening=false;};this.recognition.onerror=e=>{console.error(e);const msg=e&&e.error==='not-allowed'?'Microphone access was blocked. Please allow microphone use and try again.':`Speech recognition error: ${e.error||'Unknown issue'}`;this.speechError=msg;};this.recognition.onresult=e=>{let final='';for(let i=e.resultIndex;i<e.results.length;i++){const res=e.results[i];if(res.isFinal)final+=res[0].transcript;}if(final.trim())this.applySpeechTranscript(final);};},
+        toggleListening(){if(this.speechSupported!==true||!this.recognition)return;this.speechError='';try{if(this.isListening){this.recognition.stop();}else{this.recognition.lang=this.recognitionLang;this.recognition.start();}}catch(err){console.error(err);this.speechError='Unable to start speech recognition. Please try again.';}},
+        applySpeechTranscript(chunk){const addition=chunk.trim();if(!addition)return;if(this.recognitionLang&&this.recognitionLang.startsWith('en')){const newLatin=(this.rawLatin?this.rawLatin.trim()+' ':'')+addition;this.rawLatin=newLatin.trim();let hindi=addition;if(window.Sanscript&&typeof window.Sanscript.t==='function'){const converted=window.Sanscript.t(addition.toLowerCase(),'itrans','devanagari');if(converted)hindi=converted;}this.applyTransliteratedText(hindi,false);return;}this.applyTransliteratedText(addition,true);},
+        applyTransliteratedText(text,overrideLatin=true){const addition=text.trim();if(!addition)return;const ta=this.$refs.translit;const existing=ta.value.trim();const combined=(existing?existing+' ':'')+addition;ta.value=combined.trim();if(overrideLatin){if(this.recognitionLang&&this.recognitionLang.startsWith('en')){this.rawLatin=combined.trim();}else{this.rawLatin='';}}ta.dispatchEvent(new Event('input',{bubbles:true}));},
         playTTS(txt,rate){if(!('speechSynthesis'in window)||this.isSequencePlaying)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang='hi-IN';u.rate=parseFloat(rate);window.speechSynthesis.speak(u)},
         async playSequence(){if(this.isSequencePlaying||!this.deconstructedWord.length)return;this.isSequencePlaying=true;window.speechSynthesis.cancel();const pause=t=>new Promise(r=>setTimeout(r,t));try{for(let i=0;i<this.deconstructedWord.length;i++){this.currentlySpeakingSyllableIndex=i;await new Promise((res,rej)=>{const u=new SpeechSynthesisUtterance(this.deconstructedWord[i].full);u.lang='hi-IN';u.rate=parseFloat(this.playbackRate);u.onend=res;u.onerror=rej;window.speechSynthesis.speak(u)});this.currentlySpeakingSyllableIndex=null;await pause(400/parseFloat(this.playbackRate));}await pause(600/parseFloat(this.playbackRate));await new Promise(res=>{const u=new SpeechSynthesisUtterance(this.deconstructorInput);u.lang='hi-IN';u.rate=parseFloat(this.playbackRate);u.onend=res;window.speechSynthesis.speak(u)});}catch(e){console.error(e)}finally{this.isSequencePlaying=false;this.currentlySpeakingSyllableIndex=null;}}};}
     document.addEventListener('alpine:init',()=>{Alpine.data('matraTuner',matraTuner)});
